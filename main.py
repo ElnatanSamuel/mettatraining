@@ -1,6 +1,7 @@
 from hyperon import MeTTa, SymbolAtom, ExpressionAtom, GroundedAtom
 import os
 import glob
+import json
 
 metta = MeTTa()
 metta.run(f"!(bind! &space (new-space))")
@@ -9,6 +10,7 @@ def load_dataset(path: str) -> None:
     if not os.path.exists(path):
         raise ValueError(f"Dataset path '{path}' does not exist.")
     paths = glob.glob(os.path.join(path, "**/*.metta"), recursive=True)
+    print(paths)
     if not paths:
         raise ValueError(f"No .metta files found in dataset path '{path}'.")
     for path in paths:
@@ -24,29 +26,61 @@ def load_dataset(path: str) -> None:
 # Example usage:
 try:
     dataset = load_dataset("./Data")
+    # print(dataset)
    
 except Exception as e:
     print(f"An error occurred: {e}")
 
+    
+
 # 2 Points
 def get_transcript(node):
      #TODO Implement the logic to fetch the transcript
-    transcript = metta.run()
-    return transcript     
+    gene_id = node[0].split()[1]   
+    query = f'''
+    !(match &space 
+            (transcribed_to (gene {gene_id}) $transcript)
+            ((transcribed_to (gene {gene_id}) $transcript))
+        )
+    '''
+    
+    transcript = metta.run(query)
+
+    return transcript[0]
+
 
 #2 Points
 def get_protein(node):
     #TODO Implement the logic to fetch the protein
-    protein = metta.run() 
-    return protein
-
+    transcript_id = node[0].split()[1] 
+    query = f'''
+    !(match &space
+        (transcribed_to (gene {transcript_id}) $transcript)
+         (match &space 
+                (translates_to $transcript $protein)
+                ((translates_to $transcript $protein))
+        )
+    )
+    '''
+    
+    protein = metta.run(query)
+    return protein[0]
 #6 Points
 def metta_seralizer(metta_result):
     #TODO Implement logic to convert the Metta output into a structured format  (e.g., a list of dictionaries) that can be easily serialized to JSON.
+    result = []
+    for item in metta_result:
+        edge = ExpressionAtom.get_children(item)
+        n = ExpressionAtom.get_children(edge[0])
+        result.append({
+            'edge': n[0],
+            "source": n[1],
+            "target": n[2]
+           
+        })
+    
     return result
-
-
-
+ 
 #1
 transcript_result= (get_transcript(['gene ENSG00000166913']))
 print(transcript_result) 
@@ -64,7 +98,7 @@ Expected Output Format::
 """
 
 #3
-parsed_result = metta_seralizer(transcript_result)
+parsed_result = metta_seralizer(protein_result)
 print(parsed_result) 
 """
 Expected Output Format:
